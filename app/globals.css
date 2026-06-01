@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Paleta Dacto — corporativa contabilidade (azul-marinho + emerald)
+ * Pra trocar a cor primária, ajuste os valores de --primary e --ring
+ * (HSL: matiz saturação luminosidade). Tudo o resto deriva.
+ */
+@layer base {
+  :root {
+    /* Backgrounds */
+    --background: 210 30% 98%;
+    --foreground: 222 47% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Primária: azul-marinho Dacto */
+    --primary: 215 85% 28%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secundária: tom suave do primário */
+    --secondary: 215 35% 94%;
+    --secondary-foreground: 215 85% 28%;
+
+    /* Muted: cinza-azulado leve */
+    --muted: 215 25% 95%;
+    --muted-foreground: 215 16% 47%;
+
+    /* Accent: usado em hover de cards */
+    --accent: 215 35% 94%;
+    --accent-foreground: 215 85% 28%;
+
+    /* Destructive: vermelho legível em ambos os fundos */
+    --destructive: 0 78% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    /* Bordas e inputs */
+    --border: 215 25% 88%;
+    --input: 215 25% 88%;
+
+    /* Foco / ring */
+    --ring: 215 85% 35%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222 47% 8%;
+    --foreground: 210 30% 98%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 30% 98%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 30% 98%;
+    --primary: 215 80% 60%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 222 30% 18%;
+    --secondary-foreground: 210 30% 98%;
+    --muted: 222 30% 18%;
+    --muted-foreground: 215 16% 65%;
+    --accent: 222 30% 18%;
+    --accent-foreground: 210 30% 98%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 30% 22%;
+    --input: 222 30% 22%;
+    --ring: 215 80% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

@@ -1,0 +1,243 @@
+// Schema do Prisma — Plataforma interna de treinamentos (Fase 1).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// Enums
+// ============================================================
+
+enum Role {
+  COLABORADOR
+  RH
+  ADMIN
+}
+
+enum EnrollmentStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+  BLOCKED // tentativas esgotadas; precisa liberação manual do RH
+}
+
+// ============================================================
+// Usuários
+// ============================================================
+
+model User {
+  id                  String    @id @default(cuid())
+  name                String
+  email               String    @unique
+  passwordHash        String
+  role                Role      @default(COLABORADOR)
+  department          String?
+  position            String?
+  cpf                 String?   @unique
+  photoUrl            String?
+  active              Boolean   @default(true)
+  emailVerifiedAt     DateTime?
+  // Lockout simples contra força bruta
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
+  passwordChangedAt   DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  enrollments         CourseEnrollment[]   @relation("UserEnrollments")
+  assignedEnrollments CourseEnrollment[]   @relation("AssignedBy")
+  createdCourses      Course[]             @relation("CreatedBy")
+  certificates        Certificate[]
+  passwordResets      PasswordResetToken[]
+  auditLogs           AuditLog[]
+
+  @@index([role])
+  @@index([department])
+  @@index([active])
+}
+
+// ============================================================
+// Cursos e quiz
+// ============================================================
+
+model Course {
+  id            String   @id @default(cuid())
+  title         String
+  description   String   @db.Text
+  category      String?
+  workloadHours Int
+  externalUrl   String // link da Cefis
+  passingScore  Int      @default(70) // 0-100 percentual
+  maxAttempts   Int      @default(2)
+  active        Boolean  @default(true)
+  createdById   String?
+  createdBy     User?    @relation("CreatedBy", fields: [createdById], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  questions    Question[]
+  enrollments  CourseEnrollment[]
+  certificates Certificate[]
+
+  @@index([active])
+  @@index([category])
+}
+
+model Question {
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  statement String   @db.Text
+  order     Int // ordem editorial; ordem de exibição é embaralhada por tentativa
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  answers   Answer[]
+  responses QuizResponse[]
+
+  @@index([courseId])
+}
+
+model Answer {
+  id         String   @id @default(cuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  text       String
+  isCorrect  Boolean  @default(false)
+  order      Int
+
+  responses QuizResponse[]
+
+  @@index([questionId])
+}
+
+// ============================================================
+// Matrículas e tentativas
+// ============================================================
+
+model CourseEnrollment {
+  id              String           @id @default(cuid())
+  userId          String
+  user            User             @relation("UserEnrollments", fields: [userId], references: [id])
+  courseId        String
+  course          Course           @relation(fields: [courseId], references: [id])
+  status          EnrollmentStatus @default(NOT_STARTED)
+  attemptsAllowed Int // copiado de course.maxAttempts; incrementável pelo RH
+  enrolledAt      DateTime         @default(now())
+  watchedAt       DateTime? // quando o colaborador confirmou que assistiu o vídeo na Cefis
+  startedAt       DateTime?
+  completedAt     DateTime?
+  assignedById    String?
+  assignedBy      User?            @relation("AssignedBy", fields: [assignedById], references: [id])
+
+  attempts QuizAttempt[]
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+  @@index([status])
+}
+
+model QuizAttempt {
+  id            String           @id @default(cuid())
+  enrollmentId  String
+  enrollment    CourseEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  attemptNumber Int // 1-based dentro da matrícula
+  score         Int // 0-100 percentual
+  passed        Boolean          @default(false)
+  startedAt     DateTime         @default(now())
+  finishedAt    DateTime?
+
+  responses   QuizResponse[]
+  certificate Certificate?
+
+  @@unique([enrollmentId, attemptNumber])
+  @@index([enrollmentId])
+}
+
+model QuizResponse {
+  id         String      @id @default(cuid())
+  attemptId  String
+  attempt    QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  questionId String
+  question   Question    @relation(fields: [questionId], references: [id])
+  answerId   String
+  answer     Answer      @relation(fields: [answerId], references: [id])
+  isCorrect  Boolean // snapshot no momento da resposta
+
+  @@unique([attemptId, questionId])
+  @@index([attemptId])
+  @@index([questionId])
+}
+
+// ============================================================
+// Certificados
+// ============================================================
+
+model Certificate {
+  id             String      @id @default(cuid())
+  userId         String
+  user           User        @relation(fields: [userId], references: [id])
+  courseId       String
+  course         Course      @relation(fields: [courseId], references: [id])
+  attemptId      String      @unique
+  attempt        QuizAttempt @relation(fields: [attemptId], references: [id])
+  validationCode String      @unique @default(uuid()) // exibido em /validar/[codigo]
+
+  // Snapshots — preservam os dados do momento da emissão
+  userNameSnapshot          String
+  userCpfSnapshot           String?
+  courseTitleSnapshot       String
+  courseDescriptionSnapshot String? @db.Text
+  workloadHoursSnapshot     Int
+  scoreSnapshot             Int
+
+  pdfPath  String // caminho relativo no storage
+  pdfHash  String // sha-256 do PDF gerado
+  issuedAt DateTime @default(now())
+
+  @@unique([userId, courseId, attemptId])
+  @@index([validationCode])
+  @@index([userId])
+  @@index([courseId])
+}
+
+// ============================================================
+// Auditoria e recuperação de senha
+// ============================================================
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String // "LOGIN", "LOGIN_FAIL", "PASSWORD_RESET", "EXPORT_DATA", "DELETE_USER_DATA", ...
+  entity    String? // "User", "Course", "Certificate", ...
+  entityId  String?
+  ip        String?
+  userAgent String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique // sha-256 do token enviado por email; raw nunca persiste
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
