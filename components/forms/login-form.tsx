@@ -76,7 +76,7 @@ export function LoginForm() {
         <div className="flex justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/logo-placeholder.svg"
+            src="/logo-dacto.png"
             alt="Dacto"
             className="h-12 w-auto"
           />

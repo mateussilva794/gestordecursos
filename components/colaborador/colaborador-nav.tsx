@@ -21,7 +21,7 @@ export async function ColaboradorNav() {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logo-placeholder.svg"
+              src="/logo-dacto.png"
               alt="Dacto"
               className="h-8 w-auto"
             />
