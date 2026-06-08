@@ -2,8 +2,6 @@
 
 Plataforma interna de treinamentos e certificação para empresa de contabilidade. Cada colaborador faz login individual, assiste o curso em link externo (Cefis), responde quiz de validação e recebe certificado nominal em PDF.
 
-> **Status atual:** Fase 0 — Setup. Sem features ainda; apenas a fundação do projeto rodando.
-
 ---
 
 ## Stack
